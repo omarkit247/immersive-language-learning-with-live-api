@@ -33,6 +33,7 @@ venv/
 env/
 # Local configuration
 .env
+.env.tutor
 scripts/deploy.sh
 deploy.sh
 .pytest_cache/

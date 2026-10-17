@@ -303,6 +303,11 @@ export class GeminiLiveAPI {
     }
 
     const messageData = JSON.parse(messageEvent.data);
+    if (messageData.error) {
+      this.onErrorMessage(messageData.error);
+      this.disconnect();
+      return;
+    }
     const message = new MultimodalLiveResponseMessage(messageData);
     this.onReceiveResponse(message);
   }
