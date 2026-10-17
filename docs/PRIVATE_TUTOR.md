@@ -1,7 +1,7 @@
 # Private voice-test deployment
 
-This is milestone 1: a single-user voice test with A2 German coaching. It does
-not implement saved learning history, automatic CEFR progression, or Anki export.
+This is a single-user German speaking tutor with chosen CEFR level and saved
+learning checkpoints. It does not certify CEFR progression or provide Anki export.
 The original Cloud Run deployment is unchanged; use the private files below.
 
 ## Credentials and cost
@@ -53,7 +53,7 @@ has browser-console diagnostics; do not treat this prototype as a sensitive
 records vault. No medical identifiers or patient data should be used in tests.
 
 The relay checks Host and browser Origin and uses expiring one-use connection
-tokens. Only the mission-completion tool is enabled. It closes the upstream
+tokens. Only the mission-completion and learning-checkpoint tools are enabled. It closes the upstream
 connection on client disconnect, timeout, or error. There is no reconnect loop.
 
 ## Checks performed before deployment
@@ -67,3 +67,43 @@ the preparation environment.
 
 To stop the test: `docker compose -f compose.private.yml stop`. This does not
 stop or change the separate BrainOutside or OmniRoute stacks.
+
+## Milestone 2: personal practice and learning checkpoints
+
+The private deployment opens a dedicated German practice dashboard. Choose
+A1–C2 (default A2), optionally set a conversation topic, and select Start speaking.
+Press the microphone button and say hello. English explanations are brief; the
+conversation stays in German. Open conversation does not end at a small mission
+objective. Difficulty adapts within the chosen level; level changes remain manual.
+
+Use End Mission or say "finish the session" for a wrap-up. The app requests a
+wrap-up 30 seconds before its time limit. Gemini is asked to save a checkpoint
+roughly every 3–4 learner turns, with short feedback and one next exercise. Tool
+use and correctness remain model-dependent. Abrupt disconnects can lose material
+since the last checkpoint; no background second API model is called. A failure to
+get final feedback is shown honestly rather than claiming successful completion.
+
+Preferences and up to 100 session records are saved in SQLite on the named
+`tutor-progress` Docker volume, owned by the non-root app user. Redeploying keeps
+it; deleting the volume loses it. Audio/full transcripts are not stored. Recent
+three session summaries are included in Gemini's next conversation context and
+must be treated as fallible AI suggestions, not authoritative personal facts or
+verified CEFR results. Nothing is written to BrainOutside, Obsidian or GitHub.
+The dashboard provides a JSON download and a confirmed clear-history button.
+Clear removes live app records, not downloaded copies, backups or provider data;
+it is not a forensic erase. Include the volume in any future backup plan.
+
+Update on the VPS (no environment/key changes required):
+
+```bash
+cd /data/german-tutor
+git pull --ff-only origin codex/private-german-tutor
+docker compose -f compose.private.yml config --quiet
+docker compose -f compose.private.yml up -d --build
+docker compose -f compose.private.yml ps
+```
+
+The owner confirmed milestone 1 real microphone conversation, response latency,
+interruptions and turn-taking on 18 October 2026 (Dubai). Milestone 2 still needs
+a real voice test after deployment, including a saved checkpoint and a second
+session using it. Tests use simulated Gemini responses; no live key is used here.

@@ -255,6 +255,7 @@ export class GeminiLiveAPI {
 
       const data = await response.json();
       const sessionToken = data.session_token;
+      this.sessionTimeLimit = data.session_time_limit;
 
       // 2. Connect WebSocket
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -358,6 +359,7 @@ export class GeminiLiveAPI {
 
     const sessionSetupMessage = {
       setup: {
+        tutor_session: { open_conversation: this.openConversation === true },
 
         generation_config: {
           response_modalities: this.responseModalities,
