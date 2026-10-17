@@ -107,3 +107,24 @@ The owner confirmed milestone 1 real microphone conversation, response latency,
 interruptions and turn-taking on 18 October 2026 (Dubai). Milestone 2 still needs
 a real voice test after deployment, including a saved checkpoint and a second
 session using it. Tests use simulated Gemini responses; no live key is used here.
+
+## Teaching protocol files
+
+The private server now loads four Markdown instruction files from `server/tutor/`
+at process startup: `teaching.md`, `session.md`, `memory.md`, and `resources.md`.
+The private Docker image includes them. They define selective corrections,
+uncertain-transcription handling, a brief review/conversation/recap flow, and
+cautious use of saved learning observations. They are instructions to Gemini,
+not a guarantee that every model answer complies. Test real coaching behavior.
+
+Saved SQLite history remains the single learning-memory store. There is no
+second progress Markdown file to copy or sync manually. Three recent records
+are supplied automatically; older records remain downloadable but are not all
+in the model context. Checkpoints are AI observations, not certified mastery.
+The resources file names only the previously reported YourGermanTeacher source;
+it does not assert completed lessons or access to any particular course.
+
+To change teaching later, edit these version-controlled files and rebuild/restart
+the private container with the normal deployment commands. No extra inference
+call, GitHub-reading agent or new provider is introduced by this change. The
+instructions are included in the existing live session's input context.
