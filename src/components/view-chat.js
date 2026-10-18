@@ -51,6 +51,10 @@ class ViewChat extends HTMLElement {
   }
 
   disconnectedCallback() {
+    clearTimeout(this.wrapUpTimer);
+    clearTimeout(this.sessionTimer);
+    clearTimeout(this.completionTimer);
+    if (this.audioPlayer) this.audioPlayer.interrupt();
     if (this.audioStreamer) this.audioStreamer.stop();
     if (this.client) this.client.disconnect();
   }
@@ -325,6 +329,15 @@ class ViewChat extends HTMLElement {
       );
     };
 
+    const requestWrapUp = () => {
+      if (this.ending) return;
+      this.ending = true;
+      micBtn.disabled = true;
+      statusEl.textContent = "Finishing and saving feedback…";
+      this.client.sendTextMessage("I want to finish now. Save a brief evidence-based progress checkpoint with a next exercise, then call complete_mission with feedback. Do not invent progress if we have not practised.");
+      this.wrapUpTimer = setTimeout(doEndSession, 20000);
+    };
+
     // Back Button
     const backBtn = this.querySelector("#back-to-missions");
     backBtn.addEventListener("click", () => {
@@ -356,6 +369,7 @@ class ViewChat extends HTMLElement {
 
     // Initialize Gemini Live
     this.client = new GeminiLiveAPI();
+    this.client.openConversation = this._mission?.open_conversation === true;
     this.audioStreamer = new AudioStreamer(this.client);
     this.audioPlayer = new AudioPlayer();
 
@@ -384,7 +398,8 @@ class ViewChat extends HTMLElement {
     );
 
     completeMissionTool.functionToCall = (args) => {
-      console.log("🏆 [App] Mission Complete Tool Triggered!", args);
+      clearTimeout(this.wrapUpTimer);
+      console.log("🏆 [App] Mission Complete Tool Triggered!");
 
       // Play winner sound immediately
       const winnerSound = new Audio("/winner-bell.mp3");
@@ -402,7 +417,8 @@ class ViewChat extends HTMLElement {
       );
 
       // Delay cleanup to allow the agent's congratulatory message to be heard
-      setTimeout(() => {
+      this.completionTimer = setTimeout(() => {
+        if (!this.isConnected) return;
         // Cleanup
         if (this.audioStreamer) this.audioStreamer.stop();
         if (this.client) this.client.disconnect();
@@ -437,7 +453,11 @@ class ViewChat extends HTMLElement {
 
     this.client.onReceiveResponse = (response) => {
       console.log("📥 [Gemini] Received response:", response.type);
-      if (response.type === MultimodalLiveResponseType.AUDIO) {
+      if (response.type === MultimodalLiveResponseType.SETUP_COMPLETE) {
+        if (this._mission.open_conversation) this.sessionTimer = setTimeout(requestWrapUp, Math.max(5000, ((this.client.sessionTimeLimit || 600) - 30) * 1000));
+      } else if (response.type === MultimodalLiveResponseType.INTERRUPTED) {
+        this.audioPlayer.interrupt();
+      } else if (response.type === MultimodalLiveResponseType.AUDIO) {
         this.audioPlayer.play(response.data);
       } else if (response.type === MultimodalLiveResponseType.TURN_COMPLETE) {
         console.log("✅ [Gemini] Turn complete");
@@ -480,6 +500,10 @@ class ViewChat extends HTMLElement {
     };
 
     this.client.onClose = () => {
+      clearTimeout(this.sessionTimer);
+      if (this.audioStreamer) this.audioStreamer.stop();
+      if (this.audioPlayer) this.audioPlayer.interrupt();
+      if (!this.ending) statusEl.textContent = "Session closed. Return to your practice page to continue.";
       console.log("🔒 [Gemini] Connection closed");
     };
 
@@ -496,7 +520,8 @@ class ViewChat extends HTMLElement {
       } else {
         // Was active, so stopping now
         micBtn.classList.remove('active');
-        doEndSession();
+        if (this._mission.open_conversation) requestWrapUp();
+        else doEndSession();
         return; // Stop here, don't execute start logic
       }
 
@@ -584,6 +609,11 @@ When the user has successfully achieved the mission objective declared in the sc
             "Mode:",
             mode
           );
+          if (this._mission.open_conversation) {
+            systemInstruction = `ROLEPLAY INSTRUCTION: You are a patient German tutor for an ongoing open conversation. Lead with short German questions, wait for answers, and explain important corrections briefly in English.
+INTERACTION GUIDELINES: No fixed mission objective. Keep speaking practice relaxed and adapt to the saved chosen level.
+MISSION COMPLETION: Only wrap up and call complete_mission when the learner asks to finish, or the app sends a finish request. Use score 0 and specific coaching feedback.`;
+          }
           this.client.setSystemInstructions(systemInstruction);
 
           // Configure Transcription based on Mode

@@ -255,6 +255,7 @@ export class GeminiLiveAPI {
 
       const data = await response.json();
       const sessionToken = data.session_token;
+      this.sessionTimeLimit = data.session_time_limit;
 
       // 2. Connect WebSocket
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -303,6 +304,11 @@ export class GeminiLiveAPI {
     }
 
     const messageData = JSON.parse(messageEvent.data);
+    if (messageData.error) {
+      this.onErrorMessage(messageData.error);
+      this.disconnect();
+      return;
+    }
     const message = new MultimodalLiveResponseMessage(messageData);
     this.onReceiveResponse(message);
   }
@@ -353,6 +359,7 @@ export class GeminiLiveAPI {
 
     const sessionSetupMessage = {
       setup: {
+        tutor_session: { open_conversation: this.openConversation === true },
 
         generation_config: {
           response_modalities: this.responseModalities,

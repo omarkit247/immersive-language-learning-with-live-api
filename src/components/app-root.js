@@ -18,6 +18,7 @@ import './view-splash.js';
 import './view-missions.js';
 import './view-chat.js';
 import './view-summary.js';
+import './view-tutor.js';
 import './text-cycler.js';
 
 class AppRoot extends HTMLElement {
@@ -136,7 +137,7 @@ class AppRoot extends HTMLElement {
         this.checkConfigStatus();
 
         this.addEventListener('navigate', (e) => {
-            this.state.view = e.detail.view;
+            this.state.view = this.privateTutor && ['missions', 'mission-selector'].includes(e.detail.view) ? 'tutor' : e.detail.view;
             if (e.detail.mission) this.state.selectedMission = e.detail.mission;
             if (e.detail.language) this.state.selectedLanguage = e.detail.language;
             if (e.detail.fromLanguage) this.state.selectedFromLanguage = e.detail.fromLanguage;
@@ -207,7 +208,10 @@ class AppRoot extends HTMLElement {
             const res = await fetch('/api/status');
             const data = await res.json();
 
-            if (data.mode === 'simple') {
+            if (data.private) {
+                this.privateTutor = true;
+                if (this.state.view === 'splash') { this.state.view = 'tutor'; this.render(); }
+            } else if (data.mode === 'simple') {
                 this.showSimpleModeWarning(data.missing);
             }
         } catch (e) {
@@ -255,6 +259,9 @@ class AppRoot extends HTMLElement {
             case 'splash':
                 currentView = document.createElement('view-splash');
                 break;
+            case 'tutor':
+                currentView = document.createElement('view-tutor');
+                break;
             case 'missions':
                 currentView = document.createElement('view-missions');
                 break;
@@ -266,7 +273,7 @@ class AppRoot extends HTMLElement {
                 currentView.mode = this.state.selectedMode;
                 break;
             case 'summary':
-                currentView = document.createElement('view-summary');
+                currentView = document.createElement(this.privateTutor ? 'view-tutor-summary' : 'view-summary');
                 currentView.result = this.state.sessionResult;
                 break;
             default:

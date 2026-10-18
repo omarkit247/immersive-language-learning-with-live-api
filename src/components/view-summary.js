@@ -98,7 +98,11 @@ class ViewSummary extends HTMLElement {
             <div class="card" style="text-align: left;">
               <h4 style="border-bottom: 2px solid var(--color-bg); padding-bottom: var(--spacing-sm);">Feedback</h4>
               <ul style="padding-left: var(--spacing-lg); color: var(--color-text-sub);">
-                ${this._result.notes.map(note => `<li>${note}</li>`).join('')}
+                ${this._result.notes.map(note => {
+                  const element = document.createElement('li');
+                  element.textContent = String(note);
+                  return element.outerHTML;
+                }).join('')}
               </ul>
             </div>
 
